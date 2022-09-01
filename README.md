@@ -38,20 +38,20 @@ In practice, let's see how this works.
 
 Every protocol needs to start with the creation of a pool. This would will allow both lenders and borrowers to share assets in a decentralized, trustless matter. When lending or borrowing on the platform, there will be several key numbers associated with the assets:
 
-- The interest rate to be paid on the loan (APY)
+- The interest rate to be paid on the loan (Annual Percentage Yield, or APY)
 - The borrowing power of the underlying asset (Max LTV)
-- The liquidation percentage (or Threshold)
-- Liquidation Penalty
+- The liquidation percentage (or threshold)
+- The liquidation penalty
 
 (We haven't discussed that last three points yet, but we will get to it soon.)
 
-Liquidity providers will 'supply' assets onto the platform and get a return on their asset in return. A borrower may then decide that they want to borrow another Token (let's say ETH). So they will do the following:
+Lenders will supply assets onto the platform and get a return on their asset (the APY of the asset). Borrows can then decide they want to borrow against this supply (also for a particular interest rate). In order to borrow, they must do the following:
 
 - Provide at least one type of token as the underlying asset (in this example, let's say we only lend DAI)
 - After giving approval and supplying the token to the platform, they will then go to borrow another asset (ETH)
 - They can then borrow up to the total borrowing power allowed by their asset
 - Once they borrowed, they then have access to the new assets in their wallet and use them as they wish
-- Once they are done with the funds, they then need to repay the loan on the platform, which will then unlock their original collateral to use as they wish
+- Once they are done with the token, they then need to repay the loan on the platform, which will unlock their original collateral and return it to their address.
 
 The process would look something like this:
 
@@ -61,7 +61,7 @@ On the one side, we have a pure lender (someone who is not borrowing) that is si
 
 On the other side, we have a lender who intends to become a borrower. Both the lender and the borrower lend their tokens to the platform.
 
-However, the Borrower then takes an action to borrow funds against the DAI they provided, and takes out a loan for ETH. But then can only borrow up to a percentage of their collateral (For 100% DAI, they may only be able to take out 80%, more on this later) At this time, their DAI becomes locked in the platform and the ETH becomes available for them to use. The DAI then becomes the collateral.
+However, the Borrower then takes an action to borrow funds against the DAI they provided, and takes out a loan for ETH. But then can only borrow up to a percentage of their collateral (For 100% DAI, they may only be able to take out 80%). At this time, their DAI becomes locked in the platform and the ETH becomes available for them to use. The DAI then becomes the collateral.
 
 After some time, the loan needs to be repaid, plus interest. Hopefully whatever activity the borrower had in mind was successful and they are successfully able to repay the loan plus the interest. At that time, the ETH goes back to the total supply of the pool, and the DAI becomes unlocked for the user.
 
@@ -102,10 +102,12 @@ BUSD = $2000 (1 ETH per $2000 USD)
 ($100 * .75) / $2000 = .0375 ETH
 ```
 
+Keep in mind that loans will be accruing interest over time, so the value that needs to be paid back will rise.
+
 ### Liquidation Percentage and Penalty
 [Loom Video](https://www.loom.com/share/aa59b13f8ab14b17ba502887d1230fee)
 
-So far, we've just talked about full loan repayments without penalties. But there are many cases when a loan is not repaid. Here's how the AAVE platform handle this scenario.
+So far, we've just talked about full loan repayments without penalties. But there are many cases when a loan is not repaid. Here's how the AAVE platform handles this scenario.
 
 For every token that you borrow against, there are two other numbers that are given:
 
@@ -114,7 +116,7 @@ For every token that you borrow against, there are two other numbers that are gi
 
 To understand how this works, let's go through an example.
 
-Let's say you deposit \$1,000 DAI (LTV of 75%) and thus receive $750 dollars worth of ETH. Your balance is as follows:
+Let's say you deposit \$1,000 DAI (LTV of 75%) and thus receive \$750 dollars worth of ETH. Your balance is as follows:
 
 ```
 DAI = $1000 DAI
@@ -133,13 +135,13 @@ Let's say that the value of your ETH rose from \$750 to \$825, and your DAI coll
 
 ```
 DAI = $1000 DAI
-ETH = $850 (Debt)
+ETH = $825 (Debt)
 Debt to Collateral Ratio  = 82.5%
 ```
 
-Your loan is then subject to a liquidation, because your asset is no longer considered properly collateralized. At this point, any actor on the network can choose to liquidate your loan (specifically by calling [`liquidationCall`](https://docs.aave.com/developers/core-contracts/pool#liquidationcall)). Let's say someone then decides to do this. Here's what happens:
+Your loan is then subject to a liquidation, because your asset is no longer considered properly collateralized. At this point, any actor (now called a liquidator) on the network can choose to liquidate your loan (specifically by calling [`liquidationCall`](https://docs.aave.com/developers/core-contracts/pool#liquidationcall)). Let's say someone then decides to do this. Here's what happens:
 
-1. The actor will then repay 50% of the ETH borrow (\$825 * .5 = \$412.5). This 50% is defined by the [AAVE protocol](https://docs.aave.com/faq/liquidations). Once this 50% is repaid, that half of the debt is considered paid for and will no longer be considered your debt.
+1. The liquidator will then repay 50% of the ETH borrow (\$825 * .5 = \$412.5). This 50% is defined by the [AAVE protocol](https://docs.aave.com/faq/liquidations). Once this 50% is repaid, that half of the debt is considered paid for and will no longer be considered your debt.
 2. In exchange for paying for 50% of the ETH, the liquidator can now claim 100% of what they repaid, plus a 5% Liquidation penalty (\$412.5 * 1.05 = \$433.13). This gets paid out of the $1,000 worth of DAI used as collateral and will be deducted from your funds.
 
 After this is all said and done, here is what you, the lender, are left with:
@@ -173,13 +175,13 @@ In this activity, we will do the following:
 Here are some interesting points you might consider about AAVE as you go through the above walkthrough:
 
 - We have to first approve our tokens before we can supply it. This tells us something about the way AAVE works... that it requires approvals before taking any action with your tokens.
-- When you deposit into AAVE as a lender, your assets are automatically collateralized and ready to be used in borrow.
+- When you deposit into AAVE as a lender, your assets are automatically collateralized and ready to be used in borrowing.
 - The platform is able to not only track how much you have supplied to the platform, but how much yield you accrued during that time. So the platform must have some way of being able to track this so that users are able to get their tokens and interest back. How might this be accomplished?
 
 ## Architecture Overview: How Does It Work?
 So, this is one of those cases where the underlying logic to make AAVE work is quite complex, often handling a lot of edge cases and gas minimization in order to make the protocol as efficient as possible. 
 
-However, we can look at the activities we did and then find out exactly what handles that logic in order to understand what's going on 'under the hood'. We will just consider supply and withdraws, but you can use the same method to understand any of processes that makes AAVE operate.
+However, we can look at the activities we did and then find out exactly what handles that logic in order to understand what's going on 'under the hood'. We will just consider supply and withdraws, but you can use the same method to understand any of process that makes AAVE operate.
 
 ### Overall Design
 The AAVE protocol has two main repositories that handles it's logic. Those include:
