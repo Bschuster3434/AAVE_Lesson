@@ -38,20 +38,20 @@ In practice, let's see how this works.
 
 Every protocol needs to start with the creation of a pool. This would will allow both lenders and borrowers to share assets in a decentralized, trustless matter. When lending or borrowing on the platform, there will be several key numbers associated with the assets:
 
-- The interest rate to be paid on the loan (APY)
+- The interest rate to be paid on the loan (Annual Percentage Yield, or APY)
 - The borrowing power of the underlying asset (Max LTV)
-- The liquidation percentage (or Threshold)
-- Liquidation Penalty
+- The liquidation percentage (or threshold)
+- The liquidation penalty
 
 (We haven't discussed that last three points yet, but we will get to it soon.)
 
-Liquidity providers will 'supply' assets onto the platform and get a return on their asset in return. A borrower may then decide that they want to borrow another Token (let's say ETH). So they will do the following:
+Lenders will supply assets onto the platform and get a return on their asset (the APY of the asset). Borrows can then decide they want to borrow against this supply (also for a particular interest rate). In order to borrow, they must do the following:
 
 - Provide at least one type of token as the underlying asset (in this example, let's say we only lend DAI)
 - After giving approval and supplying the token to the platform, they will then go to borrow another asset (ETH)
 - They can then borrow up to the total borrowing power allowed by their asset
 - Once they borrowed, they then have access to the new assets in their wallet and use them as they wish
-- Once they are done with the funds, they then need to repay the loan on the platform, which will then unlock their original collateral to use as they wish
+- Once they are done with the token, they then need to repay the loan on the platform, which will unlock their original collateral and return it to their address.
 
 The process would look something like this:
 
@@ -61,7 +61,7 @@ On the one side, we have a pure lender (someone who is not borrowing) that is si
 
 On the other side, we have a lender who intends to become a borrower. Both the lender and the borrower lend their tokens to the platform.
 
-However, the Borrower then takes an action to borrow funds against the DAI they provided, and takes out a loan for ETH. But then can only borrow up to a percentage of their collateral (For 100% DAI, they may only be able to take out 80%, more on this later) At this time, their DAI becomes locked in the platform and the ETH becomes available for them to use. The DAI then becomes the collateral.
+However, the Borrower then takes an action to borrow funds against the DAI they provided, and takes out a loan for ETH. But then can only borrow up to a percentage of their collateral (For 100% DAI, they may only be able to take out 80%). At this time, their DAI becomes locked in the platform and the ETH becomes available for them to use. The DAI then becomes the collateral.
 
 After some time, the loan needs to be repaid, plus interest. Hopefully whatever activity the borrower had in mind was successful and they are successfully able to repay the loan plus the interest. At that time, the ETH goes back to the total supply of the pool, and the DAI becomes unlocked for the user.
 
@@ -102,10 +102,12 @@ BUSD = $2000 (1 ETH per $2000 USD)
 ($100 * .75) / $2000 = .0375 ETH
 ```
 
+Keep in mind that loans will be accruing interest over time, so the value that needs to be paid back will rise.
+
 ### Liquidation Percentage and Penalty
 [Loom Video](https://www.loom.com/share/aa59b13f8ab14b17ba502887d1230fee)
 
-So far, we've just talked about full loan repayments without penalties. But there are many cases when a loan is not repaid. Here's how the AAVE platform handle this scenario.
+So far, we've just talked about full loan repayments without penalties. But there are many cases when a loan is not repaid. Here's how the AAVE platform handles this scenario.
 
 For every token that you borrow against, there are two other numbers that are given:
 
@@ -114,7 +116,7 @@ For every token that you borrow against, there are two other numbers that are gi
 
 To understand how this works, let's go through an example.
 
-Let's say you deposit \$1,000 DAI (LTV of 75%) and thus receive $750 dollars worth of ETH. Your balance is as follows:
+Let's say you deposit \$1,000 DAI (LTV of 75%) and thus receive \$750 dollars worth of ETH. Your balance is as follows:
 
 ```
 DAI = $1000 DAI
@@ -133,13 +135,13 @@ Let's say that the value of your ETH rose from \$750 to \$825, and your DAI coll
 
 ```
 DAI = $1000 DAI
-ETH = $850 (Debt)
+ETH = $825 (Debt)
 Debt to Collateral Ratio  = 82.5%
 ```
 
-Your loan is then subject to a liquidation, because your asset is no longer considered properly collateralized. At this point, any actor on the network can choose to liquidate your loan (specifically by calling [`liquidationCall`](https://docs.aave.com/developers/core-contracts/pool#liquidationcall)). Let's say someone then decides to do this. Here's what happens:
+Your loan is then subject to a liquidation, because your asset is no longer considered properly collateralized. At this point, any actor (now called a liquidator) on the network can choose to liquidate your loan (specifically by calling [`liquidationCall`](https://docs.aave.com/developers/core-contracts/pool#liquidationcall)). Let's say someone then decides to do this. Here's what happens:
 
-1. The actor will then repay 50% of the ETH borrow (\$825 * .5 = \$412.5). This 50% is defined by the [AAVE protocol](https://docs.aave.com/faq/liquidations). Once this 50% is repaid, that half of the debt is considered paid for and will no longer be considered your debt.
+1. The liquidator will then repay 50% of the ETH borrow (\$825 * .5 = \$412.5). This 50% is defined by the [AAVE protocol](https://docs.aave.com/faq/liquidations). Once this 50% is repaid, that half of the debt is considered paid for and will no longer be considered your debt.
 2. In exchange for paying for 50% of the ETH, the liquidator can now claim 100% of what they repaid, plus a 5% Liquidation penalty (\$412.5 * 1.05 = \$433.13). This gets paid out of the $1,000 worth of DAI used as collateral and will be deducted from your funds.
 
 After this is all said and done, here is what you, the lender, are left with:
@@ -173,13 +175,13 @@ In this activity, we will do the following:
 Here are some interesting points you might consider about AAVE as you go through the above walkthrough:
 
 - We have to first approve our tokens before we can supply it. This tells us something about the way AAVE works... that it requires approvals before taking any action with your tokens.
-- When you deposit into AAVE as a lender, your assets are automatically collateralized and ready to be used in borrow.
+- When you deposit into AAVE as a lender, your assets are automatically collateralized and ready to be used in borrowing.
 - The platform is able to not only track how much you have supplied to the platform, but how much yield you accrued during that time. So the platform must have some way of being able to track this so that users are able to get their tokens and interest back. How might this be accomplished?
 
 ## Architecture Overview: How Does It Work?
 So, this is one of those cases where the underlying logic to make AAVE work is quite complex, often handling a lot of edge cases and gas minimization in order to make the protocol as efficient as possible. 
 
-However, we can look at the activities we did and then find out exactly what handles that logic in order to understand what's going on 'under the hood'. We will just consider supply and withdraws, but you can use the same method to understand any of processes that makes AAVE operate.
+However, we can look at the activities we did and then find out exactly what handles that logic in order to understand what's going on 'under the hood'. We will just consider supply and withdraws, but you can use the same method to understand any of process that makes AAVE operate.
 
 ### Overall Design
 The AAVE protocol has two main repositories that handles it's logic. Those include:
@@ -189,7 +191,7 @@ The AAVE protocol has two main repositories that handles it's logic. Those inclu
 
 Most of the logic we care about is in `core`, so that's where we will focus our time.
 
-In the `aave-v3-core` repository, there is a folder called [`contract/protocol`](https://github.com/aave/aave-v3-core/tree/master/contracts/protocol), which contains all of the activities we just did in the walk through. To help assist your understanding, you can view the [Contract Overview here](https://docs.aave.com/developers/getting-started/contracts-overview).
+In the `aave-v3-core` repository, there is a folder called [`contract/protocol`](https://github.com/aave/aave-v3-core/tree/master/contracts/protocol), which contains all of the activities we just did in the walkthrough. To help assist your understanding, you can view the [Contract Overview here](https://docs.aave.com/developers/getting-started/contracts-overview).
 
 Overall, AAVE has three main vehicles it uses to maintain borrowing and lending in the AAVE protocol:
 
@@ -197,13 +199,13 @@ Overall, AAVE has three main vehicles it uses to maintain borrowing and lending 
 - ATokens
 - DebtTokens
 
-The Pools are the different assets that you can lend and borrow against. New pools get added by the [Pool Address Provider Registry](https://github.com/aave/aave-v3-core/blob/master/contracts/protocol/configuration/PoolAddressesProviderRegistry.sol), which allows different types of markets to be added to the contract. The owner of this contract has the ability to add and remove pools from the AAVE contract.
+The Pools are the different assets that you can lend and borrow against. New pools get added by the [Pool Address Provider Registry](https://github.com/aave/aave-v3-core/blob/master/contracts/protocol/configuration/PoolAddressesProviderRegistry.sol), which allows different types of markets to be added to the contract. 'ETH' is one market. 'DAI' is another. The owner of this contract has the ability to add and remove pools from the AAVE contract.
 
-When you 'supply' a token to the contract, it doesn't merely give access to the pool you provided. You will be minted a new asset called an `AToken`. This is a yield-generating token that is minted and burned when you supply and withdraw your assets from the AAVE pool. 
+When you supply a token to the pool, it does more than just keep track of your deposit. You will be minted a new asset called an `AToken`. This is a yield-generating token that is minted and burned when you supply and withdraw your assets from the AAVE pool. 
 
-This is how AAVE keeps track of your owed tokens and yields within the platform. This is treated as a simple EIP20 token, allowing you to transfer and get the balance of this token. Owning this asset is what 'gives' you a yield on the platform. When you burn the asset, you are then given your original asset plus whatever interest you accrued.
+This is how AAVE keeps track of your owed tokens and yields within the platform. This is treated as a simple EIP20 token, which allows you to do most of the activities you can do with an ERC20 token. Owning this asset is what 'gives' you a yield on the platform. When you burn the asset, you are then given your original asset plus whatever interest you accrued.
 
-`DebtTokens` work in a similar manner, except they are *non-transferable*, mostly-EIP compliant tokens that tracks your principle and interest payment. When you burn a debtToken, you need to also provide the subsequent amount of the underlying asset to 'pay off' your debt. There are two variations of `DebtTokens`, stable and variable. Stable tokens have a fixed interest rate associate with them and variable tokens have a variable rate associated with them. We saw this when we could borrow a token at a fixed or variable rate:
+`DebtTokens` work in a similar manner, except they are *non-transferable*, mostly-EIP20 compliant tokens that tracks your principle and interest payment. When you burn a debtToken, you need to also provide the subsequent amount of the underlying asset to 'pay off' your debt. There are two variations of `DebtTokens`, stable and variable. Stable tokens have a fixed interest rate associate with them and variable tokens have a variable rate associated with them. We saw this when we looked to borrow a token at a fixed or variable rate:
 
 ![variable or stable](./documents/fixed%20vs%20variable%20rate%20loans.png)
 
@@ -235,15 +237,30 @@ If we look at the AAVE v3 Core Repository, we eventually find the `Pool` contrac
 Let's dive into the logic.
 
 ### Supply Logic
-By digging further into the repository, we find that all of the 'core' logic that makes up these basic interface tasks are in a repository called [logic](https://github.com/aave/aave-v3-core/tree/master/contracts/protocol/libraries/logic). We an find the specific supply functions we call here: [SupplyLogic.sol contract](https://github.com/aave/aave-v3-core/blob/master/contracts/protocol/libraries/logic/SupplyLogic.sol).
+By digging further into the repository, we find that all of the 'core' logic that makes up these basic interface tasks are in a repository called [logic](https://github.com/aave/aave-v3-core/tree/master/contracts/protocol/libraries/logic). We can find the specific supply functions we call here: [SupplyLogic.sol contract](https://github.com/aave/aave-v3-core/blob/master/contracts/protocol/libraries/logic/SupplyLogic.sol).
 
 At the top of the contract, we see additional imports, but one that I want to draw your attention to is [IAtoken](https://github.com/aave/aave-v3-core/blob/master/contracts/protocol/libraries/logic/SupplyLogic.sol#L6), which is the *interface* for ATokens. We will see how this is used in a moment.
 
 Let's now look at the [executeSupply function](https://github.com/aave/aave-v3-core/blob/master/contracts/protocol/libraries/logic/SupplyLogic.sol#L52).
 
-To start, we go and grab the `reserveData`, which is the data on the market for the asset provided. This is how the contract knows how much supply is available and then adjusts the interest rates on a variable basis, based on the total reserve amount. Since we are adding to the supply, the interest rate will need to be updated.
+(As this file is quite large, it's best to open it in another screen to follow along.)
 
-This, however, is where the collateral asset gets 'locked' and an aToken gets created:
+To start, we see this data in the function:
+
+```
+    DataTypes.ReserveData storage reserve = reservesData[params.asset];
+    DataTypes.ReserveCache memory reserveCache = reserve.cache();
+
+    reserve.updateState(reserveCache);
+
+    ValidationLogic.validateSupply(reserveCache, params.amount);
+
+    reserve.updateInterestRates(reserveCache, params.asset, params.amount, 0);
+```
+
+ Here, the function grabs the `reserveData`, which is the data on the market for the asset provided. This is how the contract knows how much supply is available and then adjusts the interest rates on a variable basis, based on the total reserve amount. Since we are adding to the supply, the interest rate will need to be updated.
+
+After these tasks are done, the collateral asset gets 'locked' and aTokens gets created:
 
 ```
     IERC20(params.asset).safeTransferFrom(msg.sender, reserveCache.aTokenAddress, params.amount);
@@ -259,7 +276,7 @@ This, however, is where the collateral asset gets 'locked' and an aToken gets cr
 In this transaction, we get the following changes:
 
 - The collateral asset for the supply is being sent to the reserve of other tokens, which is defined by the aTokenAddress
-- Then, an aToken is then minted to the sender, which appears to be a one to one minting (1 ETH == 1 aToken ETH). This token gets a particular interest rate (`reserveCache.nextLiquidityIndex`), which the user then has access to.
+- Then, an aToken is then minted to the sender. This token gets a particular interest rate (`reserveCache.nextLiquidityIndex`), which is associated with the token.
 
 You'll also notice that the function uses a [safeTransferFrom](https://github.com/aave/aave-v3-core/blob/master/contracts/protocol/libraries/logic/SupplyLogic.sol#L67), which is why we needed to give approval to the contract before it could use our tokens.
 
@@ -281,18 +298,18 @@ In the next section, some validation logic is provided, with the user automatica
     }
 ```
 
-By the end of this transaction, the user no longer holds their original asset, but instead holds the aToken equivalent, which can then be redeemed in the future, plus interest on the transaction.
+By the end of this transaction, the user no longer holds their original asset, but instead holds the aToken equivalent, which can then be redeemed in the future.
 
 ### Withdraw Logic
 [Loom Video](https://www.loom.com/share/464c5d6cfe8046ee8fa594ad35b7ce0d)
 
-Withdrawing works in a similar manner, but there's a slight difference in the way the function is operated.
+Withdrawing works in a similar manner, but there's a slight difference in the way the function transfers tokens.
 
 We can see the [withdraw function in the pool](https://github.com/aave/aave-v3-core/blob/master/contracts/protocol/pool/Pool.sol#L197), called `executeWithdraw`, where the user provides their aTokens, and then [burns the aToken](https://github.com/aave/aave-v3-core/blob/master/contracts/protocol/libraries/logic/SupplyLogic.sol#L131) from the total aToken supply. We can also see that the index is updated to re-balance the pool and figure out the next interest rate.
 
-However, we do not see a `safeTransfer` function here, and you won't find it in this contract. This is because the logic to transfer tokens is stored in the aToken itself (`reserveCache.aTokenAddress`), which is initialized as an aToken. To see this logic, we have to go to the [aToken functionality](https://github.com/aave/aave-v3-core/blob/1aae831f9c25f6dbfe30770b69fbe74366bdbb32/contracts/protocol/tokenization/AToken.sol#L97).
+However, we do not see a `safeTransfer` function here, and you won't find it in this contract. This is because the logic to transfer tokens is stored in the aToken itself (`reserveCache.aTokenAddress`). The logic has always been available to the contract, but in order to see it, we have to find the source code. That is stored in a folder called [tokenization](https://github.com/aave/aave-v3-core/tree/master/contracts/protocol/tokenization), where the [aToken functionality](https://github.com/aave/aave-v3-core/blob/1aae831f9c25f6dbfe30770b69fbe74366bdbb32/contracts/protocol/tokenization/AToken.sol#L97) is located.
 
-If you look at the burn function, you'll see this logic:
+If you open this file and look at the burn function, you'll see this logic:
 
 ```
   function burn(
@@ -308,7 +325,7 @@ If you look at the burn function, you'll see this logic:
   }
 ```
 
-We can then see that the `receiverOfUnderlying` is the address the executed the contract (the user of the borrowing). So when the token gets burned, the transfer of the underlying asset to the user is done in one single transaction.
+We can then see that the `receiverOfUnderlying` is the address being transferred to. This is the same user who executed the withdraw. So when the token gets burned, the transfer of the underlying asset to the user is done in one single burn transaction. This was likely done at the token level so that no matter what, burning aTokens always in a transfer of assets, with no assets getting locked. There does seem to be a case where if the address itself is executing the burn, assets don't get transferred, likely to help with re-balancing the pool of assets for maintenance.
 
 Through this process, then, we can see how the supply and the withdraws are executed at a foundational level.
 
